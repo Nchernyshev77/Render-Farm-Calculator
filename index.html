@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Render Farm Time Calculator</title>
+  <style>
+    :root{
+      /* Personal-planer palette */
+      --radius: 6px;
+      --radius-sm: 6px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+
+      --bg: #171717;
+      --panel: #232323;
+      --panel2: #2a2a2a;
+      --text: #ffffff;
+      --muted: #a3a3a3;
+      --border: #2f2f2f;
+
+      --accent: #10a37f;
+
+      --fill: rgba(255,255,255,0.035);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap{max-width:1200px; margin:0 auto; padding: 18px;}
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 0 0 12px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+    }
+    .logo{
+      width: 22px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: var(--accent);
+      font-weight: 800;
+      user-select:none;
+    }
+    .title{
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: .2px;
+    }
+
+    .grid{
+      display:grid;
+      gap: 14px;
+      grid-template-columns: 1fr;
+      align-items:start;
+    }
+    @media (min-width: 980px){
+      .grid{grid-template-columns: 360px 1fr;}
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00)) , var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .card-header{
+      padding: 14px 14px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .card-header h2{
+      margin:0;
+      font-size: 15px;
+      font-weight: 650;
+    }
+    .card-body{padding: 12px 14px 14px;}
+
+    label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+    label .sub{
+      display:block;
+      color: rgba(255,255,255,0.55);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    input, select{
+      width:100%;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 10px;
+      border-radius: var(--radius-sm);
+      outline:none;
+      font-size: 14px;
+    }
+    input::placeholder{color: rgba(255,255,255,0.45);}
+    input:focus, select:focus{ border-color: rgba(16,163,127,0.70); }
+
+    .row{display:grid; gap: 10px;}
+    @media (min-width: 560px){
+      .row.two{grid-template-columns: 1fr 1fr;}
+    }
+    /* CPU / GPU / Unit must be on one line */
+    .row.tpf{
+      grid-template-columns: 1fr 1fr 110px;
+      align-items:end;
+    }
+
+    .machinesGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Select dropdown: dark background + white text */
+    select{
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255,255,255,0.65) 50%),
+        linear-gradient(135deg, rgba(255,255,255,0.65) 50%, transparent 50%);
+      background-position:
+        calc(100% - 16px) 50%,
+        calc(100% - 11px) 50%;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      padding-right: 34px;
+    }
+    option{
+      background: var(--panel2);
+      color: var(--text);
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.65);
+      font-size: 12px;
+      user-select:none;
+      white-space:nowrap;
+      background: rgba(255,255,255,0.02);
+    }
+    .badge.accent{
+      color: rgba(255,255,255,0.92);
+      border-color: rgba(16,163,127,0.45);
+      background: rgba(16,163,127,0.10);
+    }
+
+    .sep{height:1px; background: rgba(255,255,255,0.06); margin: 10px 0;}
+
+    .resultGrid{
+      display:grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .hero{
+      position: relative;
+      padding: 12px 12px;
+      background: var(--fill);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-sm);
+    }
+    .heroTop{
+      position: relative;
+      padding-right: 74px; /* reserve space for pills */
+      min-height: 14px;
+    }
+    .heroTop .k{
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hero .big{
+      margin-top: 4px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      white-space: nowrap;
+      font-size: clamp(22px, 3.1vw, 40px);
+    }
+    .mutedSmall{color: var(--muted); font-size: 12px; margin-top: 6px;}
+
+    /* Small pills; positioned so they don't change hero height */
+    .seg{
+      position: absolute;
+      top: -2px;
+      right: 0;
+      display:inline-flex;
+      align-items:center;
+      gap: 3px;
+      padding: 1px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.10);
+    }
+    .seg button{
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: rgba(255,255,255,0.65);
+      font-size: 10px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .seg button:hover{ background: rgba(255,255,255,0.06); }
+    .seg button.active{
+      color: rgba(255,255,255,0.92);
+      border-color: rgba(16,163,127,0.45);
+      background: rgba(16,163,127,0.10);
+    }
+    .seg.static button{
+      pointer-events: none;
+      cursor: default;
+    }
+
+    .kv{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 6px 0;
+      font-size: 13.5px;
+    }
+    .kv .k{color: var(--muted);}
+    .kv .v{font-weight: 650;}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">✓</div>
+        <div class="title">Render Farm Calculator</div>
+      </div>
+      <span class="badge" id="activeBadge">Pool: ALL</span>
+    </header>
+
+    <div class="grid">
+      <!-- Left: form -->
+      <section class="card">
+        <div class="card-header">
+          <h2>Task parameters</h2>
+        </div>
+        <div class="card-body">
+          <div style="margin-bottom:12px;">
+            <label for="project">Project name</label>
+            <input id="project" placeholder="Name" />
+          </div>
+
+          <div class="row two" style="margin-bottom:12px;">
+            <div>
+              <label for="pool">Pool</label>
+              <select id="pool">
+                <option value="FPool2">FPool2</option>
+                <option value="FPool3">FPool3</option>
+                <option value="BSK">BSK</option>
+                <option value="CHLB">CHLB</option>
+                <option value="ALL" selected>ALL</option>
+              </select>
+            </div>
+            <div>
+              <label for="frames">Frames</label>
+              <input id="frames" type="number" min="0" value="100" />
+            </div>
+          </div>
+
+          <div class="row tpf" style="margin-bottom:12px;">
+            <div>
+              <label for="tpf_cpu">Time per frame<span class="sub">(CPU)</span></label>
+              <input id="tpf_cpu" type="number" min="0" step="0.1" value="2" />
+            </div>
+            <div>
+              <label for="tpf_gpu"><span style="display:block; height:14px;"></span><span class="sub">(GPU)</span></label>
+              <input id="tpf_gpu" type="number" min="0" step="0.1" value="0.5" />
+            </div>
+            <div>
+              <label for="unit">Unit</label>
+              <select id="unit">
+                <option value="hour" selected>h.</option>
+                <option value="min">min.</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:650; font-size: 13.5px; margin-bottom:8px;">Free machines</div>
+            <div class="machinesGrid">
+              <div>
+                <label for="m_fpool2">FPool2</label>
+                <input id="m_fpool2" type="number" min="1" value="25" />
+              </div>
+              <div>
+                <label for="m_fpool3">FPool3</label>
+                <input id="m_fpool3" type="number" min="1" value="30" />
+              </div>
+              <div>
+                <label for="m_bsk">BSK</label>
+                <input id="m_bsk" type="number" min="1" value="18" />
+              </div>
+              <div>
+                <label for="m_chlb">CHLB</label>
+                <input id="m_chlb" type="number" min="1" value="13" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: results -->
+      <section id="results"></section>
+    </div>
+  </div>
+
+<script>
+  const DEFAULT = { FPool2: 25, FPool3: 30, BSK: 18, CHLB: 13 };
+  const el = (id) => document.getElementById(id);
+
+  const state = {
+    project: "",
+    pool: "ALL",
+    frames: 100,
+    tpfCPU: 2,
+    tpfGPU: 0.5,
+    unit: "hour",
+    machines: { ...DEFAULT },
+    gpuMode: { BSK: "GPU", CHLB: "GPU" }, // per-pool mode
+    gpuLockedToCpu: true,                 // keep GPU = CPU/4 until user edits GPU
+  };
+
+  const gpuPools = new Set(["BSK","CHLB"]);
+  const cpuPillPools = new Set(["FPool2","FPool3"]);
+
+  function clampInt(v, min){
+    const n = Number(v);
+    if (!Number.isFinite(n)) return min;
+    return Math.max(min, Math.trunc(n));
+  }
+  function ceilDiv(a,b){
+    if (b <= 0) return 0;
+    return Math.ceil(a / b);
+  }
+  function toMinutes(value, unit){
+    const v = Number.isFinite(value) ? value : 0;
+    return unit === "hour" ? v * 60 : v;
+  }
+  function formatDurationMinutes(totalMinutes){
+    const m = Math.max(0, Math.round(totalMinutes));
+    const days = Math.floor(m / (60*24));
+    const hours = Math.floor((m % (60*24)) / 60);
+    const minutes = m % 60;
+
+    const parts = [];
+    if (days) parts.push(days + "d");
+    if (hours || days) parts.push(hours + "h");
+    parts.push(minutes + "m");
+    return parts.join(" ");
+  }
+
+  function calc(frames, machines, timePerFrameMinutes){
+    const f = clampInt(frames, 0);
+    const m = clampInt(machines, 1);
+    const t = Math.max(0, Number(timePerFrameMinutes) || 0);
+
+    if (f === 0 || t === 0){
+      return { frames:f, machines:m, packetSize:0, lastPassMachines:0, totalMinutes:0 };
+    }
+    const packetSize = ceilDiv(f, m);
+
+    // Machines used on the last pass
+    let last = f % m;
+    if (last === 0) last = Math.min(m, f);
+    const totalMinutes = packetSize * t;
+
+    return { frames:f, machines:m, packetSize, lastPassMachines:last, totalMinutes };
+  }
+
+  function segmented(poolKey, mode){
+    const cpuActive = mode === "CPU" ? "active" : "";
+    const gpuActive = mode === "GPU" ? "active" : "";
+    return `
+      <div class="seg" role="tablist" aria-label="${poolKey} mode">
+        <button type="button" class="${cpuActive}" data-pool="${poolKey}" data-mode="CPU" aria-pressed="${mode === "CPU"}">CPU</button>
+        <button type="button" class="${gpuActive}" data-pool="${poolKey}" data-mode="GPU" aria-pressed="${mode === "GPU"}">GPU</button>
+      </div>
+    `;
+  }
+
+  function cpuOnlyPill(poolKey){
+    return `
+      <div class="seg static" aria-label="${poolKey} mode">
+        <button type="button" class="active" aria-disabled="true">CPU</button>
+      </div>
+    `;
+  }
+
+  function pillsForPool(poolKey){
+    if (gpuPools.has(poolKey)) return segmented(poolKey, state.gpuMode[poolKey] || "GPU");
+    if (cpuPillPools.has(poolKey)) return cpuOnlyPill(poolKey);
+    return "";
+  }
+
+  function currentTpfMinutesForPool(poolKey){
+    const unit = state.unit;
+    const cpuMin = toMinutes(Number(state.tpfCPU), unit);
+
+    if (!gpuPools.has(poolKey)) return cpuMin;
+
+    const gpuMin = toMinutes(Number(state.tpfGPU), unit);
+    const mode = state.gpuMode[poolKey] || "GPU";
+    return mode === "GPU" ? gpuMin : cpuMin;
+  }
+
+  function poolCard(poolKey, project, r){
+    const pills = pillsForPool(poolKey);
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h2>${poolKey}</h2>
+          <span class="badge accent">Machines: ${r.machines}</span>
+        </div>
+        <div class="card-body">
+          <div class="hero">
+            <div class="heroTop">
+              <div class="k">Render time</div>
+              ${pills}
+            </div>
+            <div class="big">${formatDurationMinutes(r.totalMinutes)}</div>
+            <div class="mutedSmall">Project: <span style="color: rgba(255,255,255,0.92); font-weight:650;">${project || "—"}</span></div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="kv"><span class="k">Frames</span><span class="v">${r.frames}</span></div>
+            <div class="kv"><span class="k">Packet size</span><span class="v">${r.packetSize}</span></div>
+            <div class="kv"><span class="k">Last pass machines</span><span class="v">${r.lastPassMachines}</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function singleResult(poolKey, project, r){
+    const pills = pillsForPool(poolKey);
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h2>Result</h2>
+          <span class="badge accent">${poolKey}</span>
+        </div>
+        <div class="card-body">
+          <div class="hero">
+            <div class="heroTop">
+              <div class="k">Render time</div>
+              ${pills}
+            </div>
+            <div class="big">${formatDurationMinutes(r.totalMinutes)}</div>
+            <div class="mutedSmall">Project: <span style="color: rgba(255,255,255,0.92); font-weight:650;">${project || "—"}</span></div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="kv"><span class="k">Frames</span><span class="v">${r.frames}</span></div>
+            <div class="kv"><span class="k">Free machines</span><span class="v">${r.machines}</span></div>
+            <div class="sep"></div>
+            <div class="kv"><span class="k">Packet size</span><span class="v">${r.packetSize}</span></div>
+            <div class="kv"><span class="k">Last pass machines</span><span class="v">${r.lastPassMachines}</span></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function wireModeButtons(){
+    document.querySelectorAll("[data-pool][data-mode]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const pool = btn.getAttribute("data-pool");
+        const mode = btn.getAttribute("data-mode");
+        if (!pool || !mode) return;
+        if (!gpuPools.has(pool)) return;
+        if (mode !== "CPU" && mode !== "GPU") return;
+        state.gpuMode[pool] = mode;
+        update();
+      });
+    });
+  }
+
+  function roundNice(n){
+    if (!Number.isFinite(n)) return 0;
+    const r = Math.round(n * 1000) / 1000;
+    return (Math.abs(r - Math.round(r)) < 1e-9) ? Math.round(r) : r;
+  }
+
+  function convertTimes(prevUnit, nextUnit){
+    if (prevUnit === nextUnit) return;
+
+    const factor = (prevUnit === "hour" && nextUnit === "min") ? 60
+                : (prevUnit === "min" && nextUnit === "hour") ? (1/60)
+                : 1;
+
+    state.tpfCPU = roundNice(Number(state.tpfCPU) * factor);
+
+    if (state.gpuLockedToCpu){
+      state.tpfGPU = roundNice(state.tpfCPU / 4);
+    } else {
+      state.tpfGPU = roundNice(Number(state.tpfGPU) * factor);
+    }
+
+    el("tpf_cpu").value = String(state.tpfCPU);
+    el("tpf_gpu").value = String(state.tpfGPU);
+  }
+
+  function update(){
+    state.project = el("project").value;
+    state.pool = el("pool").value;
+    state.frames = Number(el("frames").value);
+
+    state.tpfCPU = Number(el("tpf_cpu").value);
+    if (state.gpuLockedToCpu && Number.isFinite(state.tpfCPU)){
+      const gpu = state.tpfCPU / 4;
+      state.tpfGPU = gpu;
+      el("tpf_gpu").value = String(roundNice(gpu));
+    } else {
+      state.tpfGPU = Number(el("tpf_gpu").value);
+    }
+
+    state.machines.FPool2 = clampInt(el("m_fpool2").value, 1);
+    state.machines.FPool3 = clampInt(el("m_fpool3").value, 1);
+    state.machines.BSK = clampInt(el("m_bsk").value, 1);
+    state.machines.CHLB = clampInt(el("m_chlb").value, 1);
+
+    const frames = clampInt(state.frames, 0);
+
+    el("activeBadge").textContent = state.pool === "ALL" ? "Pool: ALL" : ("Pool: " + state.pool);
+
+    const host = el("results");
+    if (state.pool === "ALL"){
+      const pools = ["FPool2","FPool3","BSK","CHLB"];
+      const cards = pools.map(p => {
+        const r = calc(frames, state.machines[p], currentTpfMinutesForPool(p));
+        return poolCard(p, state.project, r);
+      }).join("");
+      host.innerHTML = `<div class="resultGrid">${cards}</div>`;
+    } else {
+      const r = calc(frames, state.machines[state.pool], currentTpfMinutesForPool(state.pool));
+      host.innerHTML = singleResult(state.pool, state.project, r);
+    }
+
+    wireModeButtons();
+  }
+
+  // Wire basic events
+  ["project","pool","frames","tpf_cpu","m_fpool2","m_fpool3","m_bsk","m_chlb"].forEach(id => {
+    el(id).addEventListener("input", update);
+    el(id).addEventListener("change", update);
+  });
+
+  // GPU input breaks lock (so user can set arbitrary value)
+  el("tpf_gpu").addEventListener("input", () => {
+    state.gpuLockedToCpu = false;
+    state.tpfGPU = Number(el("tpf_gpu").value);
+    update();
+  });
+
+  // Unit: convert already-filled values on switch
+  el("unit").addEventListener("change", () => {
+    const next = el("unit").value;
+    const prev = state.unit;
+    convertTimes(prev, next);
+    state.unit = next;
+    update();
+  });
+
+  // Init
+  update();
+</script>
+</body>
+</html>
